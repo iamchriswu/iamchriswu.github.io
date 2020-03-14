@@ -6,7 +6,7 @@
   <meta name="author" content="Wu Qing">
   
   
-  <title>V2Ray一键脚本（Ubuntu） | xKRISS的个人博客</title>
+  <title>V2Ray一键脚本（CentOS） | xKRISS的个人博客</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
@@ -125,22 +125,22 @@
     
   </div>
   <h1 class="passage-title">
-    V2Ray一键脚本（Ubuntu）
+    V2Ray一键脚本（CentOS）
   </h1>
   
   <article class="passage-article">
-    <p>本脚本来自网友hijkpw的<a href="https://github.com/hijkpw/scripts" target="_blank" rel="noopener">GitHub</a>!。支持Ubuntu（仅支持Ubuntu 16.04及以上版本）系统的v2ray一键安装脚本。如果你的系统是CentOS，请参考这个教程：<a href>V2Ray一键脚本（CentOS）</a>!。</p>
-<h2 id="使用教程"><a href="#使用教程" class="headerlink" title="使用教程"></a>使用教程</h2><h3 id="服务器"><a href="#服务器" class="headerlink" title="服务器"></a>服务器</h3><p>推荐使用<a href="https://www.vultr.com/" target="_blank" rel="noopener">Vultr</a>!（ip被封可换）。</p>
+    <p>今天分享一个V2Ray一键脚本，本脚本来自网友hijkpw的<a href="https://github.com/hijkpw/scripts" target="_blank" rel="noopener">GitHub</a>。支持<strong>CentOS7/8</strong>系统的v2ray一键安装脚本。如果你的系统是Ubuntu，请参考这个教程：<a href>V2Ray一键脚本（Ubuntu）</a>。</p>
+<h2 id="使用教程"><a href="#使用教程" class="headerlink" title="使用教程"></a>使用教程</h2><h3 id="服务器"><a href="#服务器" class="headerlink" title="服务器"></a>服务器</h3><p>推荐使用<a href="https://www.vultr.com/" target="_blank" rel="noopener">Vultr</a>（ip被封可换）。</p>
 <h3 id="搭建"><a href="#搭建" class="headerlink" title="搭建"></a>搭建</h3><p>先登录到服务器，在终端（黑框框）里输入如下命令：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ bash &lt;(curl -sL https://raw.githubusercontent.com/hijkpw/scripts/master/ubuntu_install_v2ray.sh)</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ bash &lt;(curl -sL https://raw.githubusercontent.com/hijkpw/scripts/master/centos_install_v2ray.sh)</span><br></pre></td></tr></table></figure>
 <p>按回车键，接着屏幕出现 “请设置v2ray的端口[1-65535]” 的提示，输入一个你希望的端口号（例如12345，不能是22）。接下来屏幕上会疯狂出现一些你看得懂也可能看不懂的东西，如果卡住请耐心等待，直到安装成功，屏幕上出现配置信息。如果安装过程卡住，请耐心等待几分钟；如果期间网络断开（windows上表现为黑框框中或者顶部标题出现disconnected字样，mac表现为终端出现“closed by remote host”或”broken pipe”），请重新连接后再次执行命令。</p>
 <p>到此服务端配置完毕，服务器可能会自动重启，windows终端出现“disconnected”，mac出现“closed by remote host”说明服务器成功重启了，如果没提示重启则不需要。</p>
 <p>V2ray一键脚本做了如下事情：<br>1.更新系统到最新版<br>2.安装bbr加速模块<br>3.交互式安装v2ray</p>
 <p>注意：本站的一键脚本与其他网站的不能混合使用，如果之前运行过其他的请先卸载，否则可能导致无法上外网！</p>
-<h3 id="客户端下载"><a href="#客户端下载" class="headerlink" title="客户端下载"></a>客户端下载</h3><p><a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noopener">v2ray windows客户端下载</a>!</p>
-<p><a href="https://github.com/Cenmrev/V2RayW/releases" target="_blank" rel="noopener">v2ray安卓客户端下载</a>!</p>
-<p><a href="https://github.com/Shinlor/V2RayS/releases" target="_blank" rel="noopener">v2ray mac客户端下载</a>!</p>
-<p><a href="https://github.com/Fndroid/clash_for_windows_pkg/releases" target="_blank" rel="noopener">v2ray ios客户端下载</a>!</p>
+<h3 id="客户端下载"><a href="#客户端下载" class="headerlink" title="客户端下载"></a>客户端下载</h3><p><a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noopener">v2ray windows客户端下载</a></p>
+<p><a href="https://github.com/Cenmrev/V2RayW/releases" target="_blank" rel="noopener">v2ray安卓客户端下载</a></p>
+<p><a href="https://github.com/Shinlor/V2RayS/releases" target="_blank" rel="noopener">v2ray mac客户端下载</a></p>
+<p><a href="https://github.com/Fndroid/clash_for_windows_pkg/releases" target="_blank" rel="noopener">v2ray ios客户端下载</a></p>
 <p>下载客户端配置好后，就可以愉快的上外网了！</p>
 <h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><ol>
 <li><p>如果脚本执行过程中断线了，没有关系，重新连接然后运行上面的安装命令就可以了。</p>
@@ -164,7 +164,7 @@
       
         <div>
           原文链接: 
-          <a href target="_blank">https://iamchriswu.github.io/passages/V2Ray一键脚本/</a>
+          <a href target="_blank">https://iamchriswu.github.io/passages/V2Ray一键脚本(CentOS)/</a>
         </div>
       
       <div>
@@ -300,7 +300,7 @@
     <a href="javascript:void(0);" data-enable="false">
       <i class="fa fa-arrow-left"></i>
     </a>
-    <a href="/passages/hello-world/" data-enable="true">
+    <a href="/passages/V2Ray一键脚本(Ubuntu)/" data-enable="true">
       <i class="fa fa-arrow-right"></i>
     </a>
   </div>
