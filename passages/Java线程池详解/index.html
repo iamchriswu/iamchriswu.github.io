@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html>
+  
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="utf-8">
+  <meta name="author" content="xKriss">
+  
+  
+  <title>Java线程池详解 | xKRISS的个人博客</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  
+    <meta name="keywords" content="系列详解,编程,多线程,线程池,Java,">
+  
+
+  
+  <meta name="description" content="吴清的小站">
+
+  
+
+  <script src="//cdn.jsdelivr.net/npm/leancloud-storage@3.11.1/dist/av-min.js" async></script>
+
+  
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-MML-AM_CHTML" async></script>
+  
+
+  
+    <script src="//unpkg.com/valine/dist/Valine.min.js" async></script>
+  
+
+  <script>
+  // theme-ad's config script
+  // it can be used in every script
+  
+  window.AD_CONFIG = {
+    leancloud: {"appid":"8Rm1CAvHAoWo8JxvwDDRdROL-gzGzoHsz","appkey":"gO2u3anYcvwd4oKdv6NfdPnz","comment":true,"timer":true},
+    welcome: {"enable":true,"interval":30},
+    start_time: "2019-03-01",
+    passwords: ["efe07af7441da2b69c4a41e42e73be4db47f66010a56900788a458354a7373ec", ],
+    is_post: true,
+    lock: false,
+    author: "xKriss",
+    share: {"twitter":true,"facebook":true,"weibo":true,"qq":true,"wechat":true},
+    mathjax: true,
+    page_type: ""
+  };
+</script>
+
+  <script src="/vendor/sha256.min.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/index.js"></script>
+<script src="/vendor/qrcode.min.js"></script>
+
+  
+    <link rel="icon" href="/images/favicon.ico">
+    <link rel="apple-touch-icon" href="/images/touch-icon.png">
+  
+
+  <link href="//netdna.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/index.css">
+<link rel="stylesheet" href="/styles/components/highlight/highlight.css">
+
+  
+
+  
+
+
+
+</head>
+  <body>
+    <header class="site-header">
+  <div class="site-header-brand">
+    
+      <span class="site-header-brand-title">
+        <a href="/">xKRISS</a>
+      </span>
+    
+    
+      <span class="site-header-brand-motto"> | 万般皆苦，唯有自渡</span>
+    
+  </div>
+  <div class="site-header-right">
+    <nav class="site-header-navigation">
+      
+        <a href="/" target="_self">首页</a>
+      
+        <a href="/archives/" target="_self">归档</a>
+      
+        <a href="/tags/" target="_self">标签</a>
+      
+        <a href="/categories/" target="_self">分类</a>
+      
+        <a href="/friends/" target="_self">友链</a>
+      
+        <a href="/about/" target="_self">关于</a>
+      
+    </nav>
+    <div class="site-header-btn">
+      
+        <a href="https://github.com/iamchriswu/" target="_blank">
+          <i class="fa fa-github-alt"></i>
+        </a>
+      
+      <a href="javascript:void(0);" id="site-search">
+        <i class="fa fa-search"></i>
+      </a>
+    </div>
+  </div>
+</header>
+<div id="site-process"></div>
+    <main>
+      
+  <div class="passage">
+  <div class="passage-meta">
+    <span>
+      <i class="fa fa-calendar"></i>2020-03-30
+    </span>
+    
+      <span>
+        | <a href="/categories/系列详解/"><i class="fa fa-bookmark"></i>系列详解</a>
+      </span>
+    
+    
+      <span>
+        | <i class="fa fa-unlock-alt"></i>UNLOCK
+      </span>
+    
+  </div>
+  <h1 class="passage-title">
+    Java线程池详解
+  </h1>
+  
+  <article class="passage-article">
+    <p>本文将围绕Java线程池ThreadPoolExecutor的几个重要参数，参数设定的意义，如何避免线程池出现 <a href="https://en.wikipedia.org/wiki/Out_of_memory" target="_blank" rel="noopener">OOM</a> 展开对Java线程池的深入了解。</p>
+<h2 id="了解Java线程池"><a href="#了解Java线程池" class="headerlink" title="了解Java线程池"></a>了解Java线程池</h2><h3 id="Executors创建线程池"><a href="#Executors创建线程池" class="headerlink" title="Executors创建线程池"></a>Executors创建线程池</h3><p>Java中创建线程池很简单，只需要调用 <strong>Executors</strong> 中相应的便捷方法即可，比如 <strong>Executors.newFixedThreadPool(int nThreads)</strong>，但是便捷不仅隐藏了复杂性，也为我们埋下了潜在的隐患（OOM，线程耗尽）。</p>
+<p>下面列举简单列举几个 Executors 创建线程池的方法列表：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Method</th>
+<th style="text-align:left">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">newFixedThreadPool(int nThreads)</td>
+<td style="text-align:left">创建固定大小的线程池</td>
+</tr>
+<tr>
+<td style="text-align:left">newWorkStealingPool()</td>
+<td style="text-align:left">创建一个适配当前设备cpu线程数的大小的线程池</td>
+</tr>
+<tr>
+<td style="text-align:left">newSingleThreadExecutor()</td>
+<td style="text-align:left">创建只有一个线程的线程池</td>
+</tr>
+<tr>
+<td style="text-align:left">newCachedThreadPool()</td>
+<td style="text-align:left">创建一个不限线程数上限的线程池，任何提交的任务都将立即执行</td>
+</tr>
+</tbody>
+</table>
+<p>小型服务端程序使用这些快捷方法没什么问题，对于大型服务端需要长期运行的程序，创建线程池应该直接使用 <strong>ThreadPoolExecutor</strong> 的构造方法。没错，上述Executors方法创建的线程池就是通过ThreadPoolExecutor的构造方法带不同的参数创建的。</p>
+<h3 id="ThreadPoolExecutor构造方法"><a href="#ThreadPoolExecutor构造方法" class="headerlink" title="ThreadPoolExecutor构造方法"></a>ThreadPoolExecutor构造方法</h3><p>Executors中创建线程池的快捷方法，实际上是调用了ThreadPoolExecutor的构造方法（定时任务使用的是 <strong>ScheduledThreadPoolExecutor</strong> ），该类构造方法参数如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ThreadPoolExecutor</span><span class="params">(<span class="keyword">int</span> corePoolSize, <span class="keyword">int</span> maximumPoolSize, <span class="keyword">long</span> keepAliveTime, TimeUnit unit, BlockingQueue&lt;Runnable&gt; workQueue, ThreadFactory threadFactory, RejectedExecutionHandler handler)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.ctl = <span class="keyword">new</span> AtomicInteger(ctlOf(-<span class="number">536870912</span>, <span class="number">0</span>));</span><br><span class="line">        <span class="keyword">this</span>.mainLock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line">        <span class="keyword">this</span>.workers = <span class="keyword">new</span> HashSet();</span><br><span class="line">        <span class="keyword">this</span>.termination = <span class="keyword">this</span>.mainLock.newCondition();</span><br><span class="line">        <span class="keyword">if</span> (corePoolSize &gt;= <span class="number">0</span> &amp;&amp; maximumPoolSize &gt; <span class="number">0</span> &amp;&amp; maximumPoolSize &gt;= corePoolSize &amp;&amp; keepAliveTime &gt;= <span class="number">0L</span>) &#123;</span><br><span class="line">            <span class="keyword">if</span> (workQueue != <span class="keyword">null</span> &amp;&amp; threadFactory != <span class="keyword">null</span> &amp;&amp; handler != <span class="keyword">null</span>) &#123;</span><br><span class="line">                <span class="keyword">this</span>.corePoolSize = corePoolSize;</span><br><span class="line">                <span class="keyword">this</span>.maximumPoolSize = maximumPoolSize;</span><br><span class="line">                <span class="keyword">this</span>.workQueue = workQueue;</span><br><span class="line">                <span class="keyword">this</span>.keepAliveTime = unit.toNanos(keepAliveTime);</span><br><span class="line">                <span class="keyword">this</span>.threadFactory = threadFactory;</span><br><span class="line">                <span class="keyword">this</span>.handler = handler;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>参数列表如下:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Parameter</th>
+<th style="text-align:left">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">int corePoolSize</td>
+<td style="text-align:left">线程池长期维持的线程数，即使线程处于TERMINATED状态，也不会回收。</td>
+</tr>
+<tr>
+<td style="text-align:left">int maximumPoolSize</td>
+<td style="text-align:left">线程数的上限</td>
+</tr>
+<tr>
+<td style="text-align:left">long keepAliveTime</td>
+<td style="text-align:left">超过corePoolSize的线程的TERMINATED时长</td>
+</tr>
+<tr>
+<td style="text-align:left">TimeUnit unit</td>
+<td style="text-align:left">时长单位</td>
+</tr>
+<tr>
+<td style="text-align:left">BlockingQueue<runnable> workQueue</runnable></td>
+<td style="text-align:left">任务的排队队列</td>
+</tr>
+<tr>
+<td style="text-align:left">ThreadFactory threadFactory</td>
+<td style="text-align:left">新线程的生产工厂</td>
+</tr>
+<tr>
+<td style="text-align:left">RejectedExecutionHandler handler</td>
+<td style="text-align:left">线程及队列都满时的拒绝策略</td>
+</tr>
+</tbody>
+</table>
+<h3 id="线程池的工作顺序"><a href="#线程池的工作顺序" class="headerlink" title="线程池的工作顺序"></a>线程池的工作顺序</h3><p>官方是这么给出的</p>
+<p><strong>If fewer than corePoolSize threads are running, the Executor always prefers adding a new thread rather than queuing.</strong><br><strong>If corePoolSize or more threads are running, the Executor always prefers queuing a request rather than adding a new thread.</strong><br><strong>If a request cannot be queued, a new thread is created unless this would exceed maximumPoolSize, in which case, the task will be rejected.</strong></p>
+<p>如果当前线程池的大小小于corePoolSize，会创建新的线程执行任务。如果当前线程池大小等于corePoolSize，任务会被加到任务队列中。如果当前线程池大小小于maximumPoolSize，任务队列已满，会创建新的线程执行任务。如果线程池的大小等于maximumPoolSize，任务队列已满，任务会根据RejectedExecutionHandler拒绝策略执行相应的操作。总体来说就是下面所示：</p>
+<p>corePoolSize -&gt; 任务队列 -&gt; maximumPoolSize -&gt; 拒绝策略</p>
+<h3 id="Runnable-和-Callable"><a href="#Runnable-和-Callable" class="headerlink" title="Runnable 和 Callable"></a>Runnable 和 Callable</h3><p>可以向线程池提交的任务有两种：<strong>Runnable</strong> 和 <strong>Callable</strong>，二者的区别如下：</p>
+<p>1.方法签名不同，void Runnable.run(), V Callable.call() throws Exception<br>2.是否允许有返回值，Callable允许有返回值<br>3.是否允许抛出异常，Callable允许抛出异常。</p>
+<p>Callable是JDK1.5时加入的接口，作为Runnable的一种补充，允许有返回值，允许抛出异常。</p>
+<h3 id="提交任务"><a href="#提交任务" class="headerlink" title="提交任务"></a>提交任务</h3><p>下面列出三种提交任务的方式</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Method</th>
+<th style="text-align:left">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><t> Future<t> submit(Callable<t> var1)</t></t></t></td>
+<td style="text-align:left">有返回结果</td>
+</tr>
+<tr>
+<td style="text-align:left">void execute(Runnable var1)</td>
+<td style="text-align:left">无返回结果</td>
+</tr>
+<tr>
+<td style="text-align:left">Future&lt;?&gt; submit(Runnable var1)</td>
+<td style="text-align:left">返回Future，get()方法始终返回null</td>
+</tr>
+</tbody>
+</table>
+<h2 id="如何正确使用线程池"><a href="#如何正确使用线程池" class="headerlink" title="如何正确使用线程池"></a>如何正确使用线程池</h2><h3 id="避免使用无界队列"><a href="#避免使用无界队列" class="headerlink" title="避免使用无界队列"></a>避免使用无界队列</h3><p>不要使用 Executors.newXXXThreadPool() 快捷方法创建线程池，因为这种方式会使用无界的任务队列，为避免 <strong>OOM</strong> ，我们应该使用ThreadPoolExecutor的构造方法手动指定队列的最大长度：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ExecutorService service = <span class="keyword">new</span> ThreadPoolExecutor(<span class="number">2</span>, <span class="number">2</span>, <span class="number">0</span>, TimeUnit.SECONDS, <span class="keyword">new</span> ArrayBlockingQueue&lt;&gt;(<span class="number">512</span>), <span class="keyword">new</span> ThreadPoolExecutor.DiscardPolicy());</span><br></pre></td></tr></table></figure>
+<p>其中设定队列的长度。</p>
+<h3 id="明确拒绝任务时的行为"><a href="#明确拒绝任务时的行为" class="headerlink" title="明确拒绝任务时的行为"></a>明确拒绝任务时的行为</h3><p>任务队列总有占满的时候，这是再submit()提交新的任务会怎么样呢？ <strong>RejectedExecutionHandler</strong> 接口为我们提供了控制方式，接口定义如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">RejectedExecutionHandler</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">rejectedExecution</span><span class="params">(Runnable var1, ThreadPoolExecutor var2)</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>线程池给我们提供了几种常见的拒绝策略：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">拒绝策略</th>
+<th style="text-align:left">拒绝行为</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">AbortPolicy</td>
+<td style="text-align:left">RejectedExecutionException结果</td>
+</tr>
+<tr>
+<td style="text-align:left">DiscardPolicy</td>
+<td style="text-align:left">什么也不做，直接忽略</td>
+</tr>
+<tr>
+<td style="text-align:left">DiscardOldestPolicy</td>
+<td style="text-align:left">丢弃执行队列中最老的任务，尝试为当前提交的任务腾出位置</td>
+</tr>
+<tr>
+<td style="text-align:left">CallerRunsPolicy</td>
+<td style="text-align:left">直接由提交任务者执行这个任务</td>
+</tr>
+</tbody>
+</table>
+<p>线程池默认的拒绝行为是AbortPolicy，也就是抛出RejectedExecutionHandler异常，该异常是非受检异常，很容易忘记捕获。如果不关心任务被拒绝的事件，可以将拒绝策略设置成 <strong>DiscardPolicy</strong>，这样多余的任务会悄悄的被忽略。</p>
+<h3 id="获取处理结果和异常"><a href="#获取处理结果和异常" class="headerlink" title="获取处理结果和异常"></a>获取处理结果和异常</h3><p>线程池的处理结果、以及处理过程中的异常都被包装到 <strong>Future</strong> 中，并在调用 <strong>Future.get()</strong> 方法时获取，执行过程中的异常会被包装成 <strong>ExecutionException</strong>，submit()方法本身不会传递结果和任务执行过程中的异常。获取执行结果的代码可以这样写：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">ExecutorService executorService = Executors.newFixedThreadPool(<span class="number">4</span>);</span><br><span class="line">Future&lt;Object&gt; future = executorService.submit(<span class="keyword">new</span> Callable&lt;Object&gt;() &#123;</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> Object <span class="title">call</span><span class="params">()</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> RuntimeException(<span class="string">"exception in call"</span>);<span class="comment">// 该异常会在调用Future.get()时传递给调用者</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">	</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">  Object result = future.get();</span><br><span class="line">&#125; <span class="keyword">catch</span> (InterruptedException e) &#123;</span><br><span class="line"></span><br><span class="line">&#125; <span class="keyword">catch</span> (ExecutionException e) &#123;</span><br><span class="line">  <span class="comment">// exception in Callable.call()</span></span><br><span class="line">  e.printStackTrace();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="线程池的常用场景"><a href="#线程池的常用场景" class="headerlink" title="线程池的常用场景"></a>线程池的常用场景</h2><h3 id="正确构造线程池"><a href="#正确构造线程池" class="headerlink" title="正确构造线程池"></a>正确构造线程池</h3><p>正确构造线程池的代码如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> poolSize = Runtime.getRuntime().availableProcessors() * <span class="number">2</span>;</span><br><span class="line">BlockingQueue&lt;Runnable&gt; queue = <span class="keyword">new</span> ArrayBlockingQueue&lt;&gt;(<span class="number">512</span>);</span><br><span class="line">RejectedExecutionHandler policy = <span class="keyword">new</span> ThreadPoolExecutor.DiscardPolicy();</span><br><span class="line">executorService = <span class="keyword">new</span> ThreadPoolExecutor(poolSize, poolSize, <span class="number">0</span>, TimeUnit.SECONDS, queue, policy);</span><br></pre></td></tr></table></figure>
+<h3 id="获取单个结果"><a href="#获取单个结果" class="headerlink" title="获取单个结果"></a>获取单个结果</h3><p>过submit()向线程池提交任务后会返回一个Future，调用V Future.get()方法能够阻塞等待执行结果，V get(long timeout, TimeUnit unit)方法可以指定等待的超时时间。</p>
+<h3 id="获取多个结果"><a href="#获取多个结果" class="headerlink" title="获取多个结果"></a>获取多个结果</h3><p>如果向线程池提交了多个任务，要获取这些任务的执行结果，可以依次调用Future.get()获得。但对于这种场景，我们更应该使用ExecutorCompletionService，该类的take()方法总是阻塞等待某一个任务完成，然后返回该任务的Future对象。向CompletionService批量提交任务后，只需调用相同次数的CompletionService.take()方法，就能获取所有任务的执行结果，获取顺序是任意的，取决于任务的完成顺序：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">solve</span><span class="params">(Executor executor, Collection&lt;Callable&lt;String&gt;&gt; solvers)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException, ExecutionException </span>&#123;</span><br><span class="line"></span><br><span class="line">    CompletionService&lt;String&gt; service = <span class="keyword">new</span> ExecutorCompletionService&lt;String&gt;(executor);<span class="comment">// 构造器</span></span><br><span class="line"></span><br><span class="line">    solvers.forEach(service::submit);<span class="comment">//提交所有任务</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">int</span> n = solvers.size();</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; ++i) &#123;<span class="comment">// 获取每一个完成的任务</span></span><br><span class="line">        String r = service.take().get();</span><br><span class="line">        <span class="keyword">if</span> (r != <span class="keyword">null</span>)</span><br><span class="line">            System.out.println(r);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="单个任务超时时间"><a href="#单个任务超时时间" class="headerlink" title="单个任务超时时间"></a>单个任务超时时间</h3><p><strong>V Future.get(long timeout, TimeUnit unit)</strong> 方法可以指定等待的超时时间，超时未完成会抛出 <strong>TimeoutException</strong>。</p>
+<h3 id="多个任务超时时间"><a href="#多个任务超时时间" class="headerlink" title="多个任务超时时间"></a>多个任务超时时间</h3><p>等待多个任务完成，并设置最大等待时间，可以通过 <strong>CountDownLatch</strong> 完成：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">testLatch</span><span class="params">(ExecutorService executorService, List&lt;Runnable&gt; tasks)</span> </span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException</span>&#123;</span><br><span class="line"></span><br><span class="line">    CountDownLatch latch = <span class="keyword">new</span> CountDownLatch(tasks.size());</span><br><span class="line">    tasks.forEach(t -&gt; &#123;</span><br><span class="line">        executorService.submit(t);</span><br><span class="line">        latch.countDown();</span><br><span class="line">    &#125;);</span><br><span class="line">    latch.await(<span class="number">5</span>, TimeUnit.SECONDS);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><p><a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ThreadPoolExecutor.html" target="_blank" rel="noopener">ThreadPoolExecutor API Doc</a></p>
+
+  </article>
+  
+    <aside class="passage-copyright">
+      <div>本文作者: xKriss</div>
+      
+        <div>
+          原文链接: 
+          <a href target="_blank">https://www.xkriss.xyz/passages/Java线程池详解/</a>
+        </div>
+      
+      <div>
+        版权声明: 本博客所有文章除特别声明外, 均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议. 转载请注明出处!
+      </div>
+    </aside>
+  
+  <aside class="table-content" id="site-toc">
+  <div class="table-content-title">
+    <i class="fa fa-arrow-right fa-lg" id="site-toc-hide-btn"></i>
+    <span>目录</span>
+  </div>
+  <div class="table-content-main">
+    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#了解Java线程池"><span class="toc-text">了解Java线程池</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Executors创建线程池"><span class="toc-text">Executors创建线程池</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ThreadPoolExecutor构造方法"><span class="toc-text">ThreadPoolExecutor构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#线程池的工作顺序"><span class="toc-text">线程池的工作顺序</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Runnable-和-Callable"><span class="toc-text">Runnable 和 Callable</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#提交任务"><span class="toc-text">提交任务</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#如何正确使用线程池"><span class="toc-text">如何正确使用线程池</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#避免使用无界队列"><span class="toc-text">避免使用无界队列</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#明确拒绝任务时的行为"><span class="toc-text">明确拒绝任务时的行为</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取处理结果和异常"><span class="toc-text">获取处理结果和异常</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#线程池的常用场景"><span class="toc-text">线程池的常用场景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#正确构造线程池"><span class="toc-text">正确构造线程池</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取单个结果"><span class="toc-text">获取单个结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#获取多个结果"><span class="toc-text">获取多个结果</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#单个任务超时时间"><span class="toc-text">单个任务超时时间</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#多个任务超时时间"><span class="toc-text">多个任务超时时间</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#参考"><span class="toc-text">参考</span></a></li></ol>
+  </div>
+</aside>
+  
+    <div class="passage-tags">
+     
+      <a href="/tags/多线程/"><i class="fa fa-tags"></i>多线程</a>
+     
+      <a href="/tags/线程池/"><i class="fa fa-tags"></i>线程池</a>
+     
+      <a href="/tags/Java/"><i class="fa fa-tags"></i>Java</a>
+    
+    </div>
+  
+</div>
+
+    </main>
+    
+      <div class="site-comment-contanier">
+  <p id="site-comment-info">
+    <i class="fa fa-spinner fa-spin"></i> 评论加载中
+  </p>
+  <div id="site-comment">
+  </div>
+</div>
+    
+    <div class="site-footer-wrapper">
+  <footer class="site-footer">
+    
+      <div class="site-footer-col">
+        <h5 class="site-footer-title">博客推荐</h5>
+        
+          <span class="site-footer-item">
+            <a href="https://weilicai.github.io/" target="_blank">CAI</a>
+          </span>
+        
+          <span class="site-footer-item">
+            <a href="https://levblanc.github.io/" target="_blank">Keep It Simple Do It Well</a>
+          </span>
+        
+          <span class="site-footer-item">
+            <a href="https://www.lyyourc.com/" target="_blank">ly你个c</a>
+          </span>
+        
+      </div>
+    
+      <div class="site-footer-col">
+        <h5 class="site-footer-title">系列教程</h5>
+        
+          <span class="site-footer-item">
+            <a href="/icu" target="_self">996.icu</a>
+          </span>
+        
+          <span class="site-footer-item">
+            <a href="http://funtl.com/zh/interview/" target="_blank">面试宝典</a>
+          </span>
+        
+          <span class="site-footer-item">
+            <a href="https://blog.csdn.net/wangmx1993328/article/category/7804809" target="_blank">Thymeleaf使用手册</a>
+          </span>
+        
+      </div>
+    
+      <div class="site-footer-col">
+        <h5 class="site-footer-title">抓到我</h5>
+        
+          <span class="site-footer-item">
+            <a href="https://github.com/iamchriswu/" target="_blank">Github</a>
+          </span>
+        
+          <span class="site-footer-item">
+            <a href="https://weibo.com/u/5705476128" target="_blank">微博</a>
+          </span>
+        
+      </div>
+    
+    <div class="site-footer-info">
+      <i class="fa fa-clock-o"></i> 本站已稳定运行<span id="site-time"></span>
+    </div>
+    
+    
+      <div class="site-footer-info">
+        <i class="fa fa-at"></i> Email: xkriss@163.com | QQ: 3121987131
+      </div>
+    
+    <div class="site-footer-info">
+      <i class="fa fa-copyright"></i> 
+      2019 <a href="https://github.com/iamchriswu/iamchriswu.github.io" target="_blank">Hexo-xKRISS</a>.
+      Created by <a href="https://iamchriswu.github.io/" target="_blank">xKRISS</a>.
+      All rights reserved.
+    </div>
+  </footer>
+</div>
+    <div id="site-layer" style="display:none;">
+  <div class="site-layer-content">
+    <div class="site-layer-header">
+      <span class="site-layer-header-title" id="site-layer-title"></span>
+      <i class="fa fa-close" id="site-layer-close"></i>
+    </div>
+    <div class="site-layer-body" id="site-layer-container">
+      <div class="site-layer-input" id="site-layer-search" style="display: none;">
+        <input type="text">
+        <i class="fa fa-search"></i>
+      </div>
+      <div class="site-layer-reward" id="site-layer-reward" style="display: none;">
+        
+          <div>
+            <img src="/images/wechat.jpg" alt="WeChat">
+            
+              <p>WeChat</p>
+            
+          </div>
+        
+          <div>
+            <img src="/images/alipay.jpg" alt="AliPay">
+            
+              <p>AliPay</p>
+            
+          </div>
+        
+      </div>
+      <div id="site-layer-welcome" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+    
+
+<div class="bottom-bar">
+  <div class="bottom-bar-left">
+    <a href="javascript:void(0);" data-enable="false">
+      <i class="fa fa-arrow-left"></i>
+    </a>
+    <a href="/passages/为-Docker-容器中的nginx配置-https/" data-enable="true">
+      <i class="fa fa-arrow-right"></i>
+    </a>
+  </div>
+  <div class="bottom-bar-right">
+    <a href="javascript:void(0);" data-enable="true" id="site-toc-show-btn">
+      <i class="fa fa-bars"></i>
+    </a>
+    
+      <a href="#site-comment" data-enable="true">
+        <i class="fa fa-commenting"></i>
+      </a>
+    
+    <a href="javascript:void(0);" id="site-toggle-share-btn">
+      <i class="fa fa-share-alt"></i>
+    </a>
+    <a href="javascript:void(0);" id="site-reward">
+      <i class="fa fa-thumbs-up"></i>
+    </a>
+    <a href="javascript:void(0);" id="back-top-btn">
+      <i class="fa fa-chevron-up"></i>
+    </a>
+  </div>
+</div>
+    <div id="share-btn">
+  
+    <a id="share-btn-twitter" href="javascript:void(0);" target="_blank">
+      <i class="fa fa-twitter"></i>
+    </a>
+  
+  
+    <a id="share-btn-facebook" href="javascript:void(0);" target="_blank">
+      <i class="fa fa-facebook"></i>
+    </a>
+  
+  
+    <a id="share-btn-weibo" href="javascript:void(0);" target="_blank">
+      <i class="fa fa-weibo"></i>
+    </a>
+  
+  
+    <a id="share-btn-qq" href="javascript:void(0);" target="_blank">
+      <i class="fa fa-qq"></i>
+    </a>
+  
+  
+    <a id="share-btn-wechat" href="javascript:void(0);" target="_blank">
+      <i class="fa fa-wechat"></i>
+    </a>
+  
+</div>
+  </body>
+</html>
